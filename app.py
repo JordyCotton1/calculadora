@@ -3,13 +3,14 @@ from PyPDF2 import PdfReader
 from collections import Counter
 import math
 import pandas as pd
+from heapq import heappush, heappop
 
 # ==============================
-# Configuración de la página
+# CONFIGURACIÓN DE LA PÁGINA
 # ==============================
 
 st.set_page_config(
-    page_title="Teoría de la Información",
+    page_title="Teoría de la Información y Huffman",
     page_icon="icono.png",
     layout="centered"
 )
@@ -21,31 +22,38 @@ st.set_page_config(
 st.markdown("""
 <style>
 
-/* Fondo general */
+/* ==============================
+   Animación Glow en LETRAS
+============================== */
+@keyframes glowText {
+    0% { text-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff; }
+    50% { text-shadow: 0 0 15px #ff00ff, 0 0 30px #ff00ff; }
+    100% { text-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff; }
+}
+
 body {
     background: radial-gradient(circle at top, #0f172a, #020617);
     color: #e5e7eb;
 }
 
-/* Títulos */
 h1 {
     color: #00ffff;
     text-align: center;
     text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
+    animation: glowText 2s infinite alternate;
 }
 
 h2, h3 {
     color: #7c3aed;
     text-shadow: 0 0 8px #7c3aed;
     text-align: center;
+    animation: glowText 2s infinite alternate;
 }
 
-/* Etiquetas */
 label {
     color: #22d3ee !important;
 }
 
-/* Quitar estilo de caja del título del radio */
 .stRadio label:first-child {
     background: none !important;
     border: none !important;
@@ -55,87 +63,80 @@ label {
     font-size: 1.2rem;
     font-weight: 600;
     color: #22d3ee;
-    cursor: default;
 }
 
-/* Evitar que parezca clickeable */
-.stRadio label:first-child:hover {
-    background: none !important;
-}
-
-
-/* TextArea */
 .stTextArea textarea {
     background-color: #020617;
     color: #00ffff;
     border: 2px solid #00ffff;
     border-radius: 10px;
     font-family: monospace;
-    box-shadow: 0 0 15px rgba(0,255,255,0.5);
 }
 
-/* File uploader */
 .stFileUploader {
     background-color: #020617;
     border: 2px dashed #7c3aed;
     border-radius: 10px;
     padding: 10px;
-    box-shadow: 0 0 15px rgba(124,58,237,0.5);
 }
 
-/* Tablas */
+/* ==============================
+   TABLA COMPLETA CON ESTILO NEÓN
+============================== */
+
 table {
-    background-color: #020617;
-    border-collapse: collapse;
-    box-shadow: 0 0 20px rgba(0,255,255,0.3);
+    width: 100% !important;
+    border-collapse: collapse !important;
+    background-color: #020617 !important;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid #00ffff !important;
+    box-shadow: 0 0 15px #00ffff;
 }
 
 thead tr th {
-    background-color: #020617;
-    color: #00ffff;
-    border-bottom: 2px solid #00ffff;
-    text-shadow: 0 0 6px #00ffff;
+    color: #00ffff !important;
+    font-size: 16px !important;
+    text-align: center !important;
+    background-color: #0f172a !important;
+    border-bottom: 2px solid #ff00ff !important;
+    padding: 12px !important;
+    animation: glowText 2s infinite alternate;
 }
 
 tbody tr td {
-    color: #e5e7eb;
-    border-bottom: 1px solid #1f2937;
+    color: #e5e7eb !important;
+    text-align: center !important;
+    padding: 10px !important;
+    border-bottom: 1px solid #334155 !important;
+    font-size: 15px !important;
 }
 
 tbody tr:hover {
-    background-color: rgba(124,58,237,0.2);
-}
-
-/* Mensajes de éxito */
-.stSuccess {
-    background-color: #020617;
-    color: #22d3ee;
-    border-left: 6px solid #22d3ee;
-    box-shadow: 0 0 15px rgba(34,211,238,0.6);
-}
-
-/* Texto normal */
-p {
-    color: #e5e7eb;
-}
-
-/* Scroll */
-::-webkit-scrollbar {
-    width: 8px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: linear-gradient(#00ffff, #7c3aed);
-    border-radius: 10px;
+    background-color: rgba(124, 58, 237, 0.25) !important;
+    transition: 0.3s;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
-st.title("Calculadora – Teoría de la Información")
+# ==============================
+# TÍTULO
+# ==============================
+
+st.title("📡 Teoría de la Información y Codificación de Huffman")
 
 # ==============================
-# Funciones matemáticas
+# SELECCIÓN DE CÁLCULO
+# ==============================
+
+calculo = st.radio(
+    "Seleccione el cálculo a realizar",
+    ["Teoría de la Información", "Codificación de Huffman"]
+)
+
+# ==============================
+# FUNCIONES MATEMÁTICAS
 # ==============================
 
 def info_hartley(p):
@@ -144,144 +145,236 @@ def info_hartley(p):
 def entropia_shannon(p):
     return -p * math.log2(p)
 
-# ==============================
-# Opción de entrada
-# ==============================
+# ======================================================
+# TEORÍA DE LA INFORMACIÓN
+# ======================================================
 
-opcion = st.radio(
-    "Seleccione el método de entrada",
-    ["Subir archivo", "Escribir texto"]
-)
+if calculo == "Teoría de la Información":
 
-texto = ""
-
-# ==============================
-# Subida de archivo
-# ==============================
-
-if opcion == "Subir archivo":
-    archivo = st.file_uploader(
-        "Suba su archivo (.txt o .pdf)",
-        type=["txt", "pdf"]
+    opcion = st.radio(
+        "Seleccione el método de entrada",
+        ["Subir archivo", "Escribir texto"]
     )
 
-    if archivo:
-        if archivo.type == "application/pdf":
-            reader = PdfReader(archivo)
-            for page in reader.pages:
-                texto += page.extract_text()
-        else:
-            texto = archivo.read().decode("utf-8")
+    texto = ""
 
-# ==============================
-# Texto escrito manualmente
-# ==============================
+    if opcion == "Subir archivo":
+        archivo = st.file_uploader(
+            "Suba su archivo (.txt o .pdf)",
+            type=["txt", "pdf"]
+        )
 
-elif opcion == "Escribir texto":
-    texto = st.text_area("Escriba el texto aquí")
+        if archivo:
+            if archivo.type == "application/pdf":
+                reader = PdfReader(archivo)
+                for page in reader.pages:
+                    texto += page.extract_text()
+            else:
+                texto = archivo.read().decode("utf-8")
 
-# ==============================
-# Procesamiento del texto
-# ==============================
+    elif opcion == "Escribir texto":
+        texto = st.text_area("Escriba el texto aquí")
 
-if texto:
-    texto = texto.upper()
-    texto = "".join(c for c in texto if c.isalpha())
+    if texto:
+        texto = texto.upper()
+        texto = "".join(c for c in texto if c.isalpha())
 
-    st.subheader("Texto procesado")
-    st.text(texto)
+        st.subheader("Texto procesado")
+        st.text(texto)
 
-    # ==============================
-    # Conteo de símbolos
-    # ==============================
+        frecuencias = Counter(texto)
+        N = sum(frecuencias.values())
+        M = len(frecuencias)
+        
+        
 
-    frecuencias = Counter(texto)
-    N = sum(frecuencias.values())
-    M = len(frecuencias)
+        st.subheader("Tabla de frecuencias")
 
-    st.subheader("Tabla de frecuencias")
+        datos = []
+        for letra, f in sorted(frecuencias.items(), key=lambda x: x[1], reverse=True):
+            p = f / N
+            datos.append((letra, f, p))
 
-    datos = []
-    for letra, f in sorted(frecuencias.items()):
-        p = f / N
-        datos.append((letra, f, p))
+        st.table(pd.DataFrame(
+            datos,
+            columns=["Letra", "Frecuencia", "Probabilidad"]
+        ))
 
-    st.table(pd.DataFrame(
-        datos,
-        columns=["Letra", "Frecuencia", "Probabilidad"]
-    ))
+        st.write(f"Total de símbolos (N): {N}")
+        st.write(f"Símbolos distintos (M): {M}")
 
-    st.write(f"Total de símbolos (N): {N}")
-    st.write(f"Símbolos distintos (M): {M}")
+        st.subheader("Información por símbolo (Hartleys)")
 
-    # ==============================
-    # Información I (Hartleys)
-    # ==============================
+        info_total = 0
+        info_tabla = []
 
-    st.subheader("Información por símbolo (Hartleys)")
+        for letra, f, p in datos:
+            I = info_hartley(p)
+            info_total += I
+            info_tabla.append((letra, p, I))
 
-    info_total = 0
-    info_tabla = []
+        st.table(pd.DataFrame(
+            info_tabla,
+            columns=["Letra", "Probabilidad", "I = -log10(p)"]
+        ))
 
-    for letra, f, p in datos:
-        I = info_hartley(p)
-        info_total += I
-        info_tabla.append((letra, p, I))
+        st.success(f"Información total I_total = {round(info_total,4)} Hartleys")
 
-    st.table(pd.DataFrame(
-        info_tabla,
-        columns=["Letra", "Probabilidad", "I = -log10(p)"]
-    ))
+        st.subheader("Entropía de Shannon")
 
-    st.success(f"Información total I_total = {round(info_total,4)} Hartleys")
+        H = 0
+        entropia_tabla = []
 
-    # ==============================
-    # Entropía H
-    # ==============================
+        for letra, f, p in datos:
+            h_i = entropia_shannon(p)
+            H += h_i
+            entropia_tabla.append((letra, p, h_i))
 
-    st.subheader("Entropía de Shannon")
+        st.table(pd.DataFrame(
+            entropia_tabla,
+            columns=["Letra", "Probabilidad", "-p·log2(p)"]
+        ))
 
-    H = 0
-    entropia_tabla = []
+        st.success(f"Entropía H = {round(H,2)} bits/símbolo")
 
-    for letra, f, p in datos:
-        h_i = entropia_shannon(p)
-        H += h_i
-        entropia_tabla.append((letra, p, h_i))
+        r = 0.7
+        T = H / r
 
-    st.table(pd.DataFrame(
-        entropia_tabla,
-        columns=["Letra", "Probabilidad", "-p·log2(p)"]
-    ))
+        st.subheader("Resumen final")
 
-    st.success(f"Entropía H = {round(H,2)} bits/símbolo")
+        resumen = pd.DataFrame({
+            "Magnitud": [
+                "Información total (I_total)",
+                "Entropía (H)",
+                "Duración del pulso (r)",
+                "Tasa de información (T)"
+            ],
+            "Valor": [
+                f"{round(info_total,4)} Hartleys",
+                f"{round(H,2)} bits/símbolo",
+                f"{r} ms",
+                f"{round(T,2)} bits/ms"
+            ]
+        })
 
-    # ==============================
-    # r y T
-    # ==============================
+        st.table(resumen)
 
-    r = 0.7
-    T = H / r
+# ======================================================
+# CODIFICACIÓN DE HUFFMAN
+# ======================================================
 
-    # ==============================
-    # Resumen final
-    # ==============================
+if calculo == "Codificación de Huffman":
 
-    st.subheader("Resumen final")
+    st.caption("Entrada tipo: A10, E7, I5, S5, O3, H2, Z2")
 
-    resumen = pd.DataFrame({
-        "Magnitud": [
-            "Información total (I_total)",
-            "Entropía (H)",
-            "Duración del pulso (r)",
-            "Tasa de información (T)"
-        ],
-        "Valor": [
-            f"{round(info_total,4)} Hartleys",
-            f"{round(H,2)} bits/símbolo",
-            f"{r} ms",
-            f"{round(T,2)} bits/ms"
-        ]
-    })
+    opcion = st.radio(
+        "Seleccione el método de entrada",
+        ["Subir archivo", "Escribir frecuencias"]
+    )
 
-    st.table(resumen)
+    entrada = ""
+
+    if opcion == "Subir archivo":
+        archivo = st.file_uploader("Suba un archivo .txt", type=["txt"])
+        if archivo:
+            entrada = archivo.read().decode("utf-8")
+
+    elif opcion == "Escribir frecuencias":
+        entrada = st.text_area(
+            "Ingrese las frecuencias (ej: A10, E7, I5, S5, O3, H2, Z2)"
+        )
+
+    if entrada:
+        try:
+            frecuencias = {}
+            partes = entrada.replace(" ", "").split(",")
+
+            for p in partes:
+                simbolo = p[0].upper()
+                freq = int(p[1:])
+                frecuencias[simbolo] = freq
+
+            st.subheader("Lista inicial de frecuencias")
+            st.table([{"Símbolo": s, "f": f} for s, f in frecuencias.items()])
+
+            class Nodo:
+                def __init__(self, simbolo, freq):
+                    self.simbolo = simbolo
+                    self.freq = freq
+                    self.izq = None
+                    self.der = None
+
+                def __lt__(self, otro):
+                    return self.freq < otro.freq
+
+            heap = []
+            for s, f in frecuencias.items():
+                heappush(heap, Nodo(s, f))
+
+            pasos = []
+
+            while len(heap) > 1:
+                n1 = heappop(heap)
+                n2 = heappop(heap)
+
+                nuevo = Nodo(n1.simbolo + n2.simbolo, n1.freq + n2.freq)
+                nuevo.izq = n1
+                nuevo.der = n2
+
+                pasos.append((n1.simbolo, n1.freq, n2.simbolo, n2.freq, nuevo.freq))
+                heappush(heap, nuevo)
+
+            raiz = heap[0]
+
+            st.subheader("Sumas sucesivas")
+            st.table([
+                {
+                    "Símbolo 1": s1,
+                    "f1": f1,
+                    "Símbolo 2": s2,
+                    "f2": f2,
+                    "Suma": suma
+                }
+                for s1, f1, s2, f2, suma in pasos
+            ])
+
+            codigos = {}
+
+            def recorrer(nodo, codigo=""):
+                if nodo.izq is None and nodo.der is None:
+                    codigos[nodo.simbolo] = codigo
+                    return
+                recorrer(nodo.izq, codigo + "0")
+                recorrer(nodo.der, codigo + "1")
+
+            recorrer(raiz)
+
+            st.subheader("Códigos Huffman")
+            st.table([
+                {"Símbolo": s, "Código": codigos[s]}
+                for s in codigos
+            ])
+
+            st.subheader("Bits totales")
+
+            bits_totales = 0
+            tabla_bits = []
+
+            for s, f in frecuencias.items():
+                L = len(codigos[s])
+                bits = f * L
+                bits_totales += bits
+
+                tabla_bits.append({
+                    "Símbolo": s,
+                    "f": f,
+                    "Código": codigos[s],
+                    "L": L,
+                    "f·L": bits
+                })
+
+            st.table(tabla_bits)
+            st.success(f"TOTAL = {bits_totales} bits")
+
+        except:
+            st.error("Formato inválido. Use por ejemplo: A10, E7, I5, S5, O3, H2, Z2")
