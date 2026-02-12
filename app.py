@@ -269,33 +269,62 @@ if calculo == "Codificación de Huffman":
 
     opcion = st.radio(
         "Seleccione el método de entrada",
-        ["Subir archivo", "Escribir frecuencias"]
+        ["Escribir frecuencias", "Subir archivo (.txt o .pdf)"]
     )
 
     entrada = ""
 
-    if opcion == "Subir archivo":
-        archivo = st.file_uploader("Suba un archivo .txt", type=["txt"])
+    # ==============================
+    # ENTRADA POR ARCHIVO
+    # ==============================
+
+    if opcion == "Subir archivo (.txt o .pdf)":
+        archivo = st.file_uploader(
+            "Suba un archivo (.txt o .pdf)",
+            type=["txt", "pdf"]
+        )
+
         if archivo:
-            entrada = archivo.read().decode("utf-8")
+            if archivo.type == "application/pdf":
+                reader = PdfReader(archivo)
+                for page in reader.pages:
+                    texto_pdf = page.extract_text()
+                    if texto_pdf:
+                        entrada += texto_pdf
+            else:
+                entrada = archivo.read().decode("utf-8")
+
+    # ==============================
+    # ENTRADA MANUAL
+    # ==============================
 
     elif opcion == "Escribir frecuencias":
         entrada = st.text_area(
             "Ingrese las frecuencias (ej: A10, E7, I5, S5, O3, H2, Z2)"
         )
 
+    # ==============================
+    # PROCESAMIENTO
+    # ==============================
+
     if entrada:
         try:
             frecuencias = {}
-            partes = entrada.replace(" ", "").split(",")
+            partes = entrada.replace(" ", "").replace("\n", ",").split(",")
 
             for p in partes:
+                if p == "":
+                    continue
                 simbolo = p[0].upper()
                 freq = int(p[1:])
                 frecuencias[simbolo] = freq
 
-            st.subheader("Lista inicial de frecuencias")
+            st.subheader(" Lista inicial de frecuencias")
             st.table([{"Símbolo": s, "f": f} for s, f in frecuencias.items()])
+
+            # ==============================
+            # NODO (CORREGIDO)
+            # ==============================
 
             class Nodo:
                 def __init__(self, simbolo, freq):
@@ -312,6 +341,17 @@ if calculo == "Codificación de Huffman":
                 heappush(heap, Nodo(s, f))
 
             pasos = []
+            estado_listas = []
+
+            estado_listas.append(
+                sorted([(n.simbolo, n.freq) for n in heap], key=lambda x: x[1])
+            )
+
+            contador_paso = 1
+
+            # ==============================
+            # SUMAS SUCESIVAS
+            # ==============================
 
             while len(heap) > 1:
                 n1 = heappop(heap)
@@ -321,22 +361,45 @@ if calculo == "Codificación de Huffman":
                 nuevo.izq = n1
                 nuevo.der = n2
 
-                pasos.append((n1.simbolo, n1.freq, n2.simbolo, n2.freq, nuevo.freq))
+                pasos.append({
+                    "Paso": contador_paso,
+                    "Símbolo 1": n1.simbolo,
+                    "f1": n1.freq,
+                    "Símbolo 2": n2.simbolo,
+                    "f2": n2.freq,
+                    "Nueva combinación": nuevo.simbolo,
+                    "Suma": nuevo.freq
+                })
+
                 heappush(heap, nuevo)
+
+                estado_listas.append(
+                    sorted([(n.simbolo, n.freq) for n in heap], key=lambda x: x[1])
+                )
+
+                contador_paso += 1
 
             raiz = heap[0]
 
-            st.subheader("Sumas sucesivas")
-            st.table([
-                {
-                    "Símbolo 1": s1,
-                    "f1": f1,
-                    "Símbolo 2": s2,
-                    "f2": f2,
-                    "Suma": suma
-                }
-                for s1, f1, s2, f2, suma in pasos
-            ])
+            # ==============================
+            # MOSTRAR PROCESO
+            # ==============================
+
+            st.subheader(" Sumas sucesivas paso a paso")
+            st.table(pasos)
+
+            st.subheader(" Evolución de la lista")
+
+            for i, estado in enumerate(estado_listas):
+                texto_estado = " , ".join([f"{s}{f}" for s, f in estado])
+                if i == 0:
+                    st.write(f"Estado inicial → {texto_estado}")
+                else:
+                    st.write(f"Después del paso {i} → {texto_estado}")
+
+            # ==============================
+            # GENERAR CÓDIGOS
+            # ==============================
 
             codigos = {}
 
@@ -349,13 +412,15 @@ if calculo == "Codificación de Huffman":
 
             recorrer(raiz)
 
-            st.subheader("Códigos Huffman")
+            st.subheader(" Códigos Huffman")
             st.table([
                 {"Símbolo": s, "Código": codigos[s]}
                 for s in codigos
             ])
 
-            st.subheader("Bits totales")
+            # ==============================
+            # BITS TOTALES
+            # ==============================
 
             bits_totales = 0
             tabla_bits = []
@@ -373,8 +438,24 @@ if calculo == "Codificación de Huffman":
                     "f·L": bits
                 })
 
+            st.subheader(" Bits totales")
             st.table(tabla_bits)
             st.success(f"TOTAL = {bits_totales} bits")
 
         except:
             st.error("Formato inválido. Use por ejemplo: A10, E7, I5, S5, O3, H2, Z2")
+
+# ======================================================
+# PORTADA DEL PROYECTO
+# ======================================================
+
+
+st.markdown("""
+###  Integrantes
+
+- **Jesús Alberto Simaj Say** - 202108020  
+- **Castillo Osorio Mario Alfredo** - 202108018  
+- **Jordy Herbert Enrique Cotton Diaz** - 202308027  
+
+---
+""")
