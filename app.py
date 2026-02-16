@@ -3,6 +3,8 @@ from PyPDF2 import PdfReader
 from collections import Counter
 import math
 import pandas as pd
+import matplotlib.pyplot as plt
+import networkx as nx
 from heapq import heappush, heappop
 
 # ==============================
@@ -263,6 +265,8 @@ if calculo == "Teoría de la Información":
 # CODIFICACIÓN DE HUFFMAN
 # ======================================================
 
+
+
 if calculo == "Codificación de Huffman":
 
     st.caption("Entrada tipo: A10, E7, I5, S5, O3, H2, Z2")
@@ -309,9 +313,9 @@ if calculo == "Codificación de Huffman":
 
     if entrada:
         try:
+            # ======= Procesar frecuencias =======
             frecuencias = {}
             partes = entrada.replace(" ", "").replace("\n", ",").split(",")
-
             for p in partes:
                 if p == "":
                     continue
@@ -322,17 +326,13 @@ if calculo == "Codificación de Huffman":
             st.subheader(" Lista inicial de frecuencias")
             st.table([{"Símbolo": s, "f": f} for s, f in frecuencias.items()])
 
-            # ==============================
-            # NODO (CORREGIDO)
-            # ==============================
-
+            # ======= Crear nodos para Huffman =======
             class Nodo:
                 def __init__(self, simbolo, freq):
                     self.simbolo = simbolo
                     self.freq = freq
                     self.izq = None
                     self.der = None
-
                 def __lt__(self, otro):
                     return self.freq < otro.freq
 
@@ -342,17 +342,11 @@ if calculo == "Codificación de Huffman":
 
             pasos = []
             estado_listas = []
-
             estado_listas.append(
                 sorted([(n.simbolo, n.freq) for n in heap], key=lambda x: x[1])
             )
 
             contador_paso = 1
-
-            # ==============================
-            # SUMAS SUCESIVAS
-            # ==============================
-
             while len(heap) > 1:
                 n1 = heappop(heap)
                 n2 = heappop(heap)
@@ -381,15 +375,11 @@ if calculo == "Codificación de Huffman":
 
             raiz = heap[0]
 
-            # ==============================
-            # MOSTRAR PROCESO
-            # ==============================
-
+            # ======= Mostrar proceso =======
             st.subheader(" Sumas sucesivas paso a paso")
             st.table(pasos)
 
             st.subheader(" Evolución de la lista")
-
             for i, estado in enumerate(estado_listas):
                 texto_estado = " , ".join([f"{s}{f}" for s, f in estado])
                 if i == 0:
@@ -397,12 +387,8 @@ if calculo == "Codificación de Huffman":
                 else:
                     st.write(f"Después del paso {i} → {texto_estado}")
 
-            # ==============================
-            # GENERAR CÓDIGOS
-            # ==============================
-
+            # ======= Generar códigos Huffman =======
             codigos = {}
-
             def recorrer(nodo, codigo=""):
                 if nodo.izq is None and nodo.der is None:
                     codigos[nodo.simbolo] = codigo
@@ -413,38 +399,53 @@ if calculo == "Codificación de Huffman":
             recorrer(raiz)
 
             st.subheader(" Códigos Huffman")
-            st.table([
-                {"Símbolo": s, "Código": codigos[s]}
-                for s in codigos
-            ])
+            st.table([{"Símbolo": s, "Código": codigos[s]} for s in codigos])
 
-            # ==============================
-            # BITS TOTALES
-            # ==============================
-
+            # ======= Calcular bits totales =======
             bits_totales = 0
             tabla_bits = []
-
             for s, f in frecuencias.items():
                 L = len(codigos[s])
                 bits = f * L
                 bits_totales += bits
-
-                tabla_bits.append({
-                    "Símbolo": s,
-                    "f": f,
-                    "Código": codigos[s],
-                    "L": L,
-                    "f·L": bits
-                })
+                tabla_bits.append({"Símbolo": s, "f": f, "Código": codigos[s], "L": L, "f·L": bits})
 
             st.subheader(" Bits totales")
             st.table(tabla_bits)
             st.success(f"TOTAL = {bits_totales} bits")
 
+            # ======= VISUALIZACIÓN DEL ÁRBOL HUFFMAN =======
+            def dibujar_arbol(nodo):
+                G = nx.DiGraph()
+                labels = {}
+
+                def agregar_nodos(n, padre=None):
+                    if n is None:
+                        return
+                    G.add_node(n.simbolo)
+                    labels[n.simbolo] = f"{n.simbolo}\n{n.freq}"
+                    if padre:
+                        G.add_edge(padre.simbolo, n.simbolo)
+                    agregar_nodos(n.izq, n)
+                    agregar_nodos(n.der, n)
+
+                agregar_nodos(nodo)
+
+                plt.figure(figsize=(12,6))
+                pos = nx.spring_layout(G, seed=42, k=1.5)  # k más grande = más separación
+                nx.draw(G, pos, with_labels=False, node_size=2500, node_color="#0f172a",
+                        edge_color="red", linewidths=2, node_shape="s")  # nodos cuadrados
+                nx.draw_networkx_labels(G, pos, labels, font_color="white", font_size=10)
+                st.subheader(" Visualización del Árbol Huffman")
+                st.pyplot(plt)
+                plt.clf()
+
+            dibujar_arbol(raiz)
+
         except:
             st.error("Formato inválido. Use por ejemplo: A10, E7, I5, S5, O3, H2, Z2")
 
+            
 # ======================================================
 # PORTADA DEL PROYECTO
 # ======================================================
