@@ -324,6 +324,7 @@ if calculo == "Codificación de Huffman":
                 frecuencias[simbolo] = freq
 
             st.subheader(" Lista inicial de frecuencias")
+            frecuencias_ordenadas = sorted(frecuencias.items(), key=lambda x: x[1], reverse=True)
             st.table([{"Símbolo": s, "f": f} for s, f in frecuencias.items()])
 
             # ======= Crear nodos para Huffman =======
