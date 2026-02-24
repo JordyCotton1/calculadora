@@ -265,8 +265,6 @@ if calculo == "Teoría de la Información":
 # CODIFICACIÓN DE HUFFMAN
 # ======================================================
 
-
-
 if calculo == "Codificación de Huffman":
 
     st.caption("Entrada tipo: A10, E7, I5, S5, O3, H2, Z2")
@@ -399,6 +397,44 @@ if calculo == "Codificación de Huffman":
 
             recorrer(raiz)
 
+            # =====================================================
+            # ======= PASO A PASO GENERACIÓN DE CÓDIGOS ==========
+            # =====================================================
+
+            st.subheader(" Paso a paso generación de códigos (recorrido del árbol)")
+
+            pasos_codigos = []
+
+            def recorrer_con_pasos(nodo, codigo=""):
+                if nodo.izq is None and nodo.der is None:
+                    pasos_codigos.append({
+                        "Símbolo": nodo.simbolo,
+                        "Camino recorrido": codigo,
+                        "Explicación": f"Se llega al símbolo {nodo.simbolo} siguiendo el camino {codigo}"
+                    })
+                    return
+
+                if nodo.izq:
+                    pasos_codigos.append({
+                        "Símbolo": nodo.izq.simbolo,
+                        "Camino recorrido": codigo + "0",
+                        "Explicación": "Izquierda → agregar 0"
+                    })
+                    recorrer_con_pasos(nodo.izq, codigo + "0")
+
+                if nodo.der:
+                    pasos_codigos.append({
+                        "Símbolo": nodo.der.simbolo,
+                        "Camino recorrido": codigo + "1",
+                        "Explicación": "Derecha → agregar 1"
+                    })
+                    recorrer_con_pasos(nodo.der, codigo + "1")
+
+            recorrer_con_pasos(raiz)
+
+            st.table(pasos_codigos)
+
+            # ======= Mostrar códigos finales =======
             st.subheader(" Códigos Huffman")
             st.table([{"Símbolo": s, "Código": codigos[s]} for s in codigos])
 
@@ -416,7 +452,6 @@ if calculo == "Codificación de Huffman":
             st.success(f"TOTAL = {bits_totales} bits")
 
             # ======= VISUALIZACIÓN DEL ÁRBOL HUFFMAN =======
-                        # ======= VISUALIZACIÓN DEL ÁRBOL HUFFMAN =======
             def dibujar_arbol(nodo):
                 G = nx.DiGraph()
                 labels = {}
@@ -433,10 +468,7 @@ if calculo == "Codificación de Huffman":
 
                 agregar_nodos(nodo)
 
-                # -------- POSICIÓN JERÁRQUICA REAL --------
                 def jerarquia_pos(G, root, width=1., vert_gap=0.2, vert_loc=0, xcenter=0.5):
-                    pos = {}
-
                     def _jerarquia_pos(G, node, width=1., vert_gap=0.2,
                                        vert_loc=0, xcenter=0.5, pos=None):
                         if pos is None:
@@ -462,7 +494,6 @@ if calculo == "Codificación de Huffman":
                 root_id = id(nodo)
                 pos = jerarquia_pos(G, root_id)
 
-                # -------- FIGURA --------
                 plt.figure(figsize=(14,8))
                 ax = plt.gca()
                 ax.set_facecolor("#1e1e1e")
@@ -512,3 +543,4 @@ st.markdown("""
 
 ---
 """)
+recorrer(raiz)
