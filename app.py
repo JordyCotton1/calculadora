@@ -543,4 +543,3 @@ st.markdown("""
 
 ---
 """)
-recorrer(raiz)
