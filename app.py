@@ -415,6 +415,7 @@ if calculo == "Codificación de Huffman":
             st.success(f"TOTAL = {bits_totales} bits")
 
             # ======= VISUALIZACIÓN DEL ÁRBOL HUFFMAN =======
+                        # ======= VISUALIZACIÓN DEL ÁRBOL HUFFMAN =======
             def dibujar_arbol(nodo):
                 G = nx.DiGraph()
                 labels = {}
@@ -422,20 +423,70 @@ if calculo == "Codificación de Huffman":
                 def agregar_nodos(n, padre=None):
                     if n is None:
                         return
-                    G.add_node(n.simbolo)
-                    labels[n.simbolo] = f"{n.simbolo}\n{n.freq}"
+                    G.add_node(id(n))
+                    labels[id(n)] = f"{n.simbolo}\n{n.freq}"
                     if padre:
-                        G.add_edge(padre.simbolo, n.simbolo)
+                        G.add_edge(id(padre), id(n))
                     agregar_nodos(n.izq, n)
                     agregar_nodos(n.der, n)
 
                 agregar_nodos(nodo)
 
-                plt.figure(figsize=(12,6))
-                pos = nx.spring_layout(G, seed=42, k=1.5)  # k más grande = más separación
-                nx.draw(G, pos, with_labels=False, node_size=2500, node_color="#0f172a",
-                        edge_color="red", linewidths=2, node_shape="s")  # nodos cuadrados
-                nx.draw_networkx_labels(G, pos, labels, font_color="white", font_size=10)
+                # -------- POSICIÓN JERÁRQUICA REAL --------
+                def jerarquia_pos(G, root, width=1., vert_gap=0.2, vert_loc=0, xcenter=0.5):
+                    pos = {}
+
+                    def _jerarquia_pos(G, node, width=1., vert_gap=0.2,
+                                       vert_loc=0, xcenter=0.5, pos=None):
+                        if pos is None:
+                            pos = {node: (xcenter, vert_loc)}
+                        else:
+                            pos[node] = (xcenter, vert_loc)
+
+                        children = list(G.successors(node))
+                        if len(children) != 0:
+                            dx = width / len(children)
+                            nextx = xcenter - width/2 - dx/2
+                            for child in children:
+                                nextx += dx
+                                pos = _jerarquia_pos(G, child, width=dx,
+                                                     vert_gap=vert_gap,
+                                                     vert_loc=vert_loc-vert_gap,
+                                                     xcenter=nextx,
+                                                     pos=pos)
+                        return pos
+
+                    return _jerarquia_pos(G, root, width, vert_gap, vert_loc, xcenter)
+
+                root_id = id(nodo)
+                pos = jerarquia_pos(G, root_id)
+
+                # -------- FIGURA --------
+                plt.figure(figsize=(14,8))
+                ax = plt.gca()
+                ax.set_facecolor("#1e1e1e")
+                plt.axis("off")
+
+                nx.draw(
+                    G,
+                    pos,
+                    with_labels=False,
+                    node_size=3000,
+                    node_color="#f1c40f",
+                    edge_color="#f1c40f",
+                    linewidths=2,
+                    node_shape="o"
+                )
+
+                nx.draw_networkx_labels(
+                    G,
+                    pos,
+                    labels,
+                    font_color="black",
+                    font_size=11,
+                    font_weight="bold"
+                )
+
                 st.subheader(" Visualización del Árbol Huffman")
                 st.pyplot(plt)
                 plt.clf()
